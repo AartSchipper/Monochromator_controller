@@ -7,7 +7,8 @@
 const int STEP = 3; // pin 
 const int DIR = 2;  // pin
 const float STEPS_NM = 96.2463; // steps per nm 
-const int MIN_stepTime = 400; // min. 400 us between steps
+const int MIN_stepTime = 390; // min. 400 us between steps
+const int NORM_stepTime = 400; 
 
 // Communication
 const int BYTES = 10; // Max command length
@@ -46,17 +47,14 @@ void loop() {
         incomingBytes[i] = '\0';
       }
     }
-    
-    
   }  
 }
 
-void processIncoming(char incomingBytes[]) {
+void processIncoming(char incomingBytes[]) { // commmand processing
   int value;
   static int echo = 1; 
   
   if (echo) echoIncoming(incomingBytes); 
-  
   
   switch (incomingBytes[0]) {
     case '?': 
@@ -91,7 +89,7 @@ void processIncoming(char incomingBytes[]) {
   
 }
 
-int getValue(char inputArray[], int startAt) {
+int getValue(char inputArray[], int startAt) { // Return the value from part of an array with one decimal
   char valueArray[BYTES]; 
   float value; 
   for (int i = startAt; i < BYTES; i++) {
@@ -101,7 +99,7 @@ int getValue(char inputArray[], int startAt) {
   return value * 10; 
 }
 
-void echoIncoming (char incomingBytes[]) {
+void echoIncoming (char incomingBytes[]) { // Echo commands
   Serial.print("> ");
   for (int i = 0; i < BYTES; i++) {
      Serial.print(incomingBytes[i]);  
@@ -118,9 +116,10 @@ void sendHelp() {
 }
 
 void gotoWavelength(int wavelength) {
- 
+    int currentPosition = move_steps(0,0);  
+     move_steps(((wavelength / 10 * STEPS_NM) - currentPosition), NORM_stepTime);   
+     Serial.print("Arrived at: "); Serial.print( (float) move_steps(0,0)/STEPS_NM); Serial.println(" nm"); 
 }
-  
   
  /*
  for (int i = 0; i < 100; i++) {
