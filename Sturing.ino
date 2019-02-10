@@ -80,6 +80,7 @@ void processIncoming(char incomingBytes[]) {
     
     case 'W':
       value = getValue (incomingBytes, 1); 
+      Serial.print("Moving to: "); Serial.print(value); Serial.println(" nm"); 
       gotoWavelength(value); 
     break; 
     
@@ -97,7 +98,6 @@ int getValue(char incomingBytes[], int startAt) {
     valueArray[i-1] = incomingBytes[i]; 
   }
   value = atoi(valueArray); 
-  Serial.println(value); 
   return value; 
 }
 
@@ -111,10 +111,10 @@ void echoIncoming (char incomingBytes[]) {
 
 void sendHelp() {
   Serial.println(" Commands: "); 
-  Serial.println(" ? - Show this help"); 
+  Serial.println(" ?  - Show this help"); 
   Serial.println(" E1 - Command echo On"); 
   Serial.println(" E0 - Command echo Off"); 
-  Serial.println(" W - Goto wavelength. W500.0 or W500");
+  Serial.println(" W  - Goto wavelength. Example: W500.0 or W500");
 }
 
 void gotoWavelength(int wavelength) {
