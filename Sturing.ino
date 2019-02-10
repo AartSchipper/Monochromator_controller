@@ -9,6 +9,9 @@ const int DIR = 2;  // pin
 const float STEPS_NM = 96.2463; // steps per nm 
 const int MIN_stepTime = 400; // min. 400 us between steps
 
+// Communication
+const int BYTES = 10; // Max command length
+
 const int UP = 1; // Direction
 #define SIGNAL A0 // pin
 
@@ -27,6 +30,37 @@ void setup() {
 
 // the loop function runs over and over again forever
 void loop() {
+  static char incomingBytes[BYTES];
+  static int bytePos = 0;  
+   
+  if (Serial.available() > 0) {
+    incomingBytes[bytePos] = Serial.read();
+    Serial.print("Reading: "); Serial.println(bytePos); 
+    bytePos++;
+    if (bytePos > BYTES - 1) bytePos = 0; 
+    
+    if (incomingBytes[bytePos - 1] == '\r') {
+      Serial.println("Processing"); 
+      processIncoming(incomingBytes); 
+      bytePos = 0; 
+      for (int i = 0; i < BYTES; i++) {
+        incomingBytes[i] = '\0';
+      }
+    }
+    
+  }  
+}
+
+void processIncoming(char incomingBytes[BYTES]) {
+  for (int i = 0; i < BYTES; i++) {
+    Serial.print(incomingBytes[i], HEX); Serial.print(" "); 
+  }
+   Serial.println(""); 
+  
+}
+  
+  
+ /*
  for (int i = 0; i < 100; i++) {
    Serial.print("Meting:"); Serial.println(i); 
    
@@ -41,7 +75,7 @@ void loop() {
    Serial.print(adc); Serial.println(","); 
  }
   while(1); 
-}
+  */
 
 int move_steps (int amount, int stepTime) { 
    static int current_position = 200 * STEPS_NM; 
