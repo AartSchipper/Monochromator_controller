@@ -51,43 +51,73 @@ void loop() {
   }  
 }
 
-void processIncoming(char incomingBytes[BYTES]) {
+void processIncoming(char incomingBytes[]) {
   int value;
-  char valueArray[10]; 
+  static int echo = 1; 
   
-  Serial.print("> "); // Echo input
-  for (int i = 0; i < BYTES; i++) {
-     Serial.print(incomingBytes[i]);  
-  }
-  Serial.println(" "); 
+  if (echo) echoIncoming(incomingBytes); 
   
-  for (int i = 1; i < BYTES; i++) {
-    valueArray[i-1] = incomingBytes[i]; 
-  }
-  value = atoi(valueArray); 
-  Serial.println(value); 
   
   switch (incomingBytes[0]) {
     case '?': 
       sendHelp(); 
     break; 
-    case 'W':
-      gotoWavelength(); 
+    
+     case 'E':
+      switch (incomingBytes[1]) { 
+        case '1':
+          Serial.println("Command echo on");
+          echo = 1;
+        break; 
+        case '0':
+          Serial.println("Command echo off");
+          echo = 0;
+        break; 
+        default: 
+        Serial.println("Unknown echo setting");
+      }
     break; 
+    
+    case 'W':
+      value = getValue (incomingBytes, 1); 
+      gotoWavelength(value); 
+    break; 
+    
     default: 
-    Serial.println("Meh"); 
+    Serial.println("Unknown command"); 
     
   }
   
 }
 
+int getValue(char incomingBytes[], int startAt) {
+  char valueArray[BYTES]; 
+  int value; 
+  for (int i = startAt; i < BYTES; i++) {
+    valueArray[i-1] = incomingBytes[i]; 
+  }
+  value = atoi(valueArray); 
+  Serial.println(value); 
+  return value; 
+}
+
+void echoIncoming (char incomingBytes[]) {
+  Serial.print("> ");
+  for (int i = 0; i < BYTES; i++) {
+     Serial.print(incomingBytes[i]);  
+  }
+  Serial.println(" "); 
+}
+
 void sendHelp() {
   Serial.println(" Commands: "); 
   Serial.println(" ? - Show this help"); 
+  Serial.println(" E1 - Command echo On"); 
+  Serial.println(" E0 - Command echo Off"); 
   Serial.println(" W - Goto wavelength. W500.0 or W500");
 }
 
-void gotoWavelength() {
+void gotoWavelength(int wavelength) {
  
 }
   
