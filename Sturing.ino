@@ -116,11 +116,11 @@ void sendHelp() {
 }
 
 void gotoWavelength(int wavelength) {
-    int currentPosition = move_steps(0,0);  
-     move_steps(((wavelength / 10 * STEPS_NM) - currentPosition), NORM_stepTime);   
-     Serial.print("Arrived at: "); Serial.print( (float) move_steps(0,0)/STEPS_NM); Serial.println(" nm"); 
+  long currentPosition = move_steps(0,0);  
+  move_steps( (((wavelength / 10) * STEPS_NM) - currentPosition), NORM_stepTime );   
+  Serial.print("Arrived at: "); Serial.print(move_steps(0,0) / STEPS_NM); Serial.println(" nm"); 
 }
-  
+ 
  /*
  for (int i = 0; i < 100; i++) {
    Serial.print("Meting:"); Serial.println(i); 
@@ -138,8 +138,8 @@ void gotoWavelength(int wavelength) {
   while(1); 
   */
 
-int move_steps (int amount, int stepTime) { 
-   static int current_position = 200 * STEPS_NM; 
+long move_steps (long amount, int stepTime) { 
+   static long current_position = 200 * STEPS_NM; 
 
    if (stepTime < MIN_stepTime) return current_position; // do not overspeed
    
