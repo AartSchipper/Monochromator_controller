@@ -23,9 +23,11 @@ void setup() {
   
   pinMode(SIGNAL, INPUT);
   analogReference(DEFAULT); 
-  Serial.begin(9600); 
+  Serial.begin(115200); 
   while (!Serial) { // wait
     } 
+  Serial.println(__DATE__);   
+  Serial.println("Monochromator control. Use carriage return. Type '?' for help"); 
 }
 
 // the loop function runs over and over again forever
@@ -35,12 +37,9 @@ void loop() {
    
   if (Serial.available() > 0) {
     incomingBytes[bytePos] = Serial.read();
-    Serial.print("Reading: "); Serial.println(bytePos); 
     bytePos++;
-    if (bytePos > BYTES - 1) bytePos = 0; 
-    
+    if (bytePos > BYTES - 1) bytePos = 0;    
     if (incomingBytes[bytePos - 1] == '\r') {
-      Serial.println("Processing"); 
       processIncoming(incomingBytes); 
       bytePos = 0; 
       for (int i = 0; i < BYTES; i++) {
@@ -48,15 +47,48 @@ void loop() {
       }
     }
     
+    
   }  
 }
 
 void processIncoming(char incomingBytes[BYTES]) {
-  for (int i = 0; i < BYTES; i++) {
-    Serial.print(incomingBytes[i], HEX); Serial.print(" "); 
-  }
-   Serial.println(""); 
+  int value;
+  char valueArray[10]; 
   
+  Serial.print("> "); // Echo input
+  for (int i = 0; i < BYTES; i++) {
+     Serial.print(incomingBytes[i]);  
+  }
+  Serial.println(" "); 
+  
+  for (int i = 1; i < BYTES; i++) {
+    valueArray[i-1] = incomingBytes[i]; 
+  }
+  value = atoi(valueArray); 
+  Serial.println(value); 
+  
+  switch (incomingBytes[0]) {
+    case '?': 
+      sendHelp(); 
+    break; 
+    case 'W':
+      gotoWavelength(); 
+    break; 
+    default: 
+    Serial.println("Meh"); 
+    
+  }
+  
+}
+
+void sendHelp() {
+  Serial.println(" Commands: "); 
+  Serial.println(" ? - Show this help"); 
+  Serial.println(" W - Goto wavelength. W500.0 or W500");
+}
+
+void gotoWavelength() {
+ 
 }
   
   
