@@ -25,17 +25,40 @@ void setup() {
   pinMode(SIGNAL, INPUT);
   analogReference(DEFAULT); 
   Serial.begin(115200); 
-  while (!Serial) { // wait
+  while (!Serial) { // wait for connection
     } 
   Serial.println(__DATE__);   
-  Serial.println("Monochromator control. Use carriage return. Type '?' for help"); 
+  Serial.println("Monochromator controller. Use carriage return. Type '?' for help"); 
 }
 
 // the loop function runs over and over again forever
 void loop() {
+  readSerial(); 
+  takeSamples(0); 
+}
+
+void takeSamples(int setSampleTime) {
+    static int sampleTime = 0; 
+    static long lastTime; 
+    int samples; 
+    if (setSampleTime > 0) sampleTime = setSampleTime; 
+    if (setSampleTime < 0) sampleTime = 0; 
+    if ( sampleTime > 0) {
+       if (millis() - lastTime > sampleTime) {
+          lastTime = millis();
+          for (int i = 0; i < 10; i++ ) {
+            samples += analogRead(SIGNAL);  
+          }
+          Serial.print(move_steps(0,0) / STEPS_NM); Serial.print(", "); Serial.println(samples / 10); 
+          samples = 0; 
+       }
+    }
+    return sampleTime; 
+}
+
+void readSerial() { 
   static char incomingBytes[BYTES];
   static int bytePos = 0;  
-   
   if (Serial.available() > 0) {
     incomingBytes[bytePos] = Serial.read();
     bytePos++;
@@ -81,6 +104,13 @@ void processIncoming(char incomingBytes[]) { // commmand processing
       Serial.print("Moving to: "); Serial.print((float) value / 10); Serial.println(" nm"); 
       gotoWavelength(value); 
     break; 
+
+    case 'S':
+       value = getValue (incomingBytes, 1) / 10; 
+       Serial.print("Sample every: "); Serial.print(value); Serial.println(" ms"); 
+       if (value < 1) value = -1; 
+       takeSamples(value); 
+    break;
     
     default: 
     Serial.println("Unknown command"); 
@@ -112,12 +142,16 @@ void sendHelp() {
   Serial.println(" ?  - Show this help"); 
   Serial.println(" E1 - Command echo On"); 
   Serial.println(" E0 - Command echo Off"); 
-  Serial.println(" W  - Goto wavelength in nm. Example: W500.0 or W500. Range: 0-1000 nm");
+  Serial.println(" Wnnn.n  - Goto wavelength in nm. Example: W500.0 or W500. Range: 0-1000 nm");
+  Serial.println(" Snnn  - Take samples every nnn ms, or as fast as each wavelength is reached");  
+  Serial.println("         One output sample is the average of 10 samples taken 1 ms apart");  
+  
 }
 
 void gotoWavelength(int wavelength) {
   long currentPosition = move_steps(0,0);  
-  move_steps( (((wavelength / 10) * STEPS_NM) - currentPosition), NORM_stepTime );   
+  
+  move_steps( (( wavelength * STEPS_NM / 10) - currentPosition), NORM_stepTime );   
   Serial.print("Arrived at: "); Serial.print(move_steps(0,0) / STEPS_NM); Serial.println(" nm"); 
 }
  
@@ -140,7 +174,7 @@ void gotoWavelength(int wavelength) {
 
 long move_steps (long amount, int stepTime) { 
    static long current_position = 200 * STEPS_NM; 
-
+   // Serial.print("Movement in steps: "); Serial.println(amount); 
    if (stepTime < MIN_stepTime) return current_position; // do not overspeed
    
    current_position += amount;
