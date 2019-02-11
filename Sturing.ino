@@ -10,6 +10,13 @@ const float STEPS_NM = 96.2463; // steps per nm
 const int MIN_stepTime = 390; // min. 400 us between steps
 const int NORM_stepTime = 400; 
 
+const int HOME = 9; // switch pin 
+const float HomePos = 255.6; // in nm
+const int homeStepTime = 500; // slow homing
+
+const long minPos = HomePos * STEPS_NM; 
+const long maxPos = 900 * STEPS_NM; 
+
 // Communication
 const int BYTES = 10; // Max command length
 
@@ -21,6 +28,7 @@ void setup() {
   pinMode(STEP, OUTPUT);
   pinMode(DIR, OUTPUT);
   digitalWrite (DIR, !UP);
+  pinMode (HOME, INPUT_PULLUP); 
   
   pinMode(SIGNAL, INPUT);
   analogReference(DEFAULT); 
@@ -28,7 +36,10 @@ void setup() {
   while (!Serial) { // wait for connection
     } 
   Serial.println(__DATE__);   
+  Serial.println("Moving to home... "); 
+  move_toHome(); 
   Serial.println("Monochromator controller. Use carriage return. Type '?' for help"); 
+  
 }
 
 // the loop function runs over and over again forever
@@ -139,13 +150,17 @@ void echoIncoming (char incomingBytes[]) { // Echo commands
 
 void sendHelp() {
   Serial.println(" Available commands: "); 
-  Serial.println(" ?  - Show this help"); 
-  Serial.println(" E1 - Command echo On"); 
-  Serial.println(" E0 - Command echo Off"); 
-  Serial.println(" Wnnn.n  - Goto wavelength in nm. Example: W500.0 or W500. Range: 0-1000 nm");
-  Serial.println(" Snnn  - Take samples every nnn ms, or as fast as each wavelength is reached");  
-  Serial.println("         One output sample is the average of 10 samples taken 1 ms apart");  
-  
+  Serial.println(" ?          - Show this help"); 
+  Serial.println(" E1         - Command echo On"); 
+  Serial.println(" E0         - Command echo Off"); 
+  Serial.println(" Wnnn.n     - Goto wavelength in nm. Example: W500.0 or W500. Range: 0-1000 nm");
+  Serial.println(" Snnn       - Take samples every nnn ms on one wavelength");  
+  Serial.println("              One output sample is the average of 10 samples taken 1 ms apart for mains frequency suppression");  
+  Serial.println(" S          - Stop stampling");  
+  Serial.println(" RBnnn.n    - Set run Begin wavelength in nm. Default 900"); 
+  Serial.println(" REnnn.n    - Set run End wavelength in nm. Default 300"); 
+  Serial.println(" RSnnn.n    - Set run step size in nm. Default 1"); 
+  Serial.println(" R          - Run "); 
 }
 
 void gotoWavelength(int wavelength) {
@@ -154,28 +169,31 @@ void gotoWavelength(int wavelength) {
   move_steps( (( wavelength * STEPS_NM / 10) - currentPosition), NORM_stepTime );   
   Serial.print("Arrived at: "); Serial.print(move_steps(0,0) / STEPS_NM); Serial.println(" nm"); 
 }
- 
- /*
- for (int i = 0; i < 100; i++) {
-   Serial.print("Meting:"); Serial.println(i); 
-   
-   int current_position = move_steps(-110, 400);  
-   Serial.print("Positie: "); Serial.println(current_position); 
-   Serial.print("Golflengte: "); Serial.println(current_position / STEPS_NM); 
-   
-   delay(10); 
 
-   int adc; 
-   adc = analogRead(SIGNAL);
-   Serial.print(adc); Serial.println(","); 
- }
-  while(1); 
-  */
+void move_toHome() {
+  while (!digitalRead(HOME)) {
+      digitalWrite (DIR, !UP);
+      digitalWrite (STEP, HIGH);
+      delayMicroseconds(homeStepTime);
+      digitalWrite (STEP, LOW);
+      delayMicroseconds(homeStepTime); 
+  }
+  while (digitalRead(HOME)) {
+      digitalWrite (DIR, UP);
+      digitalWrite (STEP, HIGH);
+      delayMicroseconds(2 * homeStepTime);
+      digitalWrite (STEP, LOW);
+      delayMicroseconds(2 * homeStepTime); 
+  }
+}
 
 long move_steps (long amount, int stepTime) { 
-   static long current_position = 200 * STEPS_NM; 
+   static long current_position = minPos; 
+   
    // Serial.print("Movement in steps: "); Serial.println(amount); 
    if (stepTime < MIN_stepTime) return current_position; // do not overspeed
+   if ((current_position + amount) < minPos && amount < 0 )   return current_position; // do not underrun
+   if ((current_position + amount) > maxPos && amount > 0 )   return current_position; // do not overrun
    
    current_position += amount;
    
