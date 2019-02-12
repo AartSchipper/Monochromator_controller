@@ -46,6 +46,52 @@ void setup() {
 void loop() {
   readSerial(); 
   takeSamples(0); 
+  doRun(0,0,0,0); 
+}
+
+void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start) {
+  static int state = 0; 
+  static int localBeginWavelength, localEndWavelength, localStepWavelength, currentWavelength; 
+  long samples;  
+  
+  if (beginWavelength > 0) localBeginWavelength = beginWavelength; 
+  if (endWavelength > 0) localEndWavelength = endWavelength; 
+  if (stepWavelength > 0) localStepWavelength = stepWavelength; 
+  
+  switch (state) {
+    case 0: // wacht
+      if (start) {
+        if (localStepWavelength > 0 && localBeginWavelength > 0 && localEndWavelength > 0 ) {
+          state = 1;
+        } else {
+           Serial.print("Run error: Not all parameters are set");
+        }
+      }
+    break; 
+    
+    case 1: // ga naar begin
+      gotoWavelength(localBeginWavelength); 
+      currentWavelength = localBeginWavelength; 
+      state = 2; 
+    break; 
+    
+    case 2: // scan
+      gotoWavelength(currentWavelength); 
+      for (int i = 0; i < 10; i++ ) {
+            samples += analogRead(SIGNAL);  
+          }
+      Serial.print(move_steps(0,0) / STEPS_NM); Serial.print(", "); Serial.println(samples / 10); 
+      samples = 0; 
+      currentWavelength += localStepWavelength; 
+      if (currentWavelength > endWavelength) state = 3; 
+    break; 
+
+    case 3: // reset
+      gotoWavelength(localBeginWavelength); 
+      currentWavelength = localBeginWavelength; 
+      state = 0; 
+    break;  
+  }
 }
 
 void takeSamples(int setSampleTime) {
@@ -122,6 +168,27 @@ void processIncoming(char incomingBytes[]) { // commmand processing
        if (value < 1) value = -1; 
        takeSamples(value); 
     break;
+
+    case 'R': // doRun(int beginWavelength, int endWavelength, int stepWavelength, int start)
+       value = getValue (incomingBytes, 2); 
+      switch (incomingBytes[1]) { 
+        case 'B':
+          doRun( value, 0,0,0);  
+          Serial.print("Run starts at: "); Serial.print((float) value / 10); Serial.println(" nm");
+        break; 
+        case 'E': 
+          doRun( 0, value,0,0);  
+          Serial.print("Run ends at: "); Serial.print((float) value / 10); Serial.println(" nm");
+        break;
+        case 'S': 
+          doRun( 0, 0,value,0);  
+          Serial.print("Run step: "); Serial.print((float) value / 10); Serial.println(" nm");
+        break; 
+        case 'R':
+          doRun(0,0,0,1); 
+        break; 
+      }
+    break; 
     
     default: 
     Serial.println("Unknown command"); 
@@ -157,15 +224,14 @@ void sendHelp() {
   Serial.println(" Snnn       - Take samples every nnn ms on one wavelength");  
   Serial.println("              One output sample is the average of 10 samples taken 1 ms apart for mains frequency suppression");  
   Serial.println(" S          - Stop stampling");  
-  Serial.println(" RBnnn.n    - Set run Begin wavelength in nm. Default 900"); 
-  Serial.println(" REnnn.n    - Set run End wavelength in nm. Default 300"); 
-  Serial.println(" RSnnn.n    - Set run step size in nm. Default 1"); 
-  Serial.println(" R          - Run "); 
+  Serial.println(" RBnnn.n    - Set Run Begin wavelength in nm. Default 900"); 
+  Serial.println(" REnnn.n    - Set Run End wavelength in nm. Default 300"); 
+  Serial.println(" RSnnn.n    - Set Run step size in nm. Default 1"); 
+  Serial.println(" R          - Run once and reset"); 
 }
 
 void gotoWavelength(int wavelength) {
   long currentPosition = move_steps(0,0);  
-  
   move_steps( (( wavelength * STEPS_NM / 10) - currentPosition), NORM_stepTime );   
   Serial.print("Arrived at: "); Serial.print(move_steps(0,0) / STEPS_NM); Serial.println(" nm"); 
 }
