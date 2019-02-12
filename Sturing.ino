@@ -62,6 +62,10 @@ void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start
     case 0: // wacht
       if (start) {
         if (localStepWavelength > 0 && localBeginWavelength > 0 && localEndWavelength > 0 ) {
+          Serial.print("Running from: "); Serial.print((float) localBeginWavelength / 10); 
+          Serial.print ("nm to: "); Serial.print((float) localEndWavelength / 10); 
+          Serial.print (" with stepsize: "); Serial.print((float) localStepWavelength / 10);
+          Serial.println(" nm"); 
           state = 1;
         } else {
            Serial.print("Run error: Not all parameters are set");
@@ -83,9 +87,8 @@ void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start
       Serial.print(move_steps(0,0) / STEPS_NM); Serial.print(", "); Serial.println(samples / 10); 
       samples = 0; 
       currentWavelength += localStepWavelength; 
-      if (currentWavelength > endWavelength) state = 3; 
+      if (currentWavelength > localEndWavelength) state = 3; 
     break; 
-
     case 3: // reset
       gotoWavelength(localBeginWavelength); 
       currentWavelength = localBeginWavelength; 
@@ -222,18 +225,19 @@ void sendHelp() {
   Serial.println(" E0         - Command echo Off"); 
   Serial.println(" Wnnn.n     - Goto wavelength in nm. Example: W500.0 or W500. Range: 0-1000 nm");
   Serial.println(" Snnn       - Take samples every nnn ms on one wavelength");  
-  Serial.println("              One output sample is the average of 10 samples taken 1 ms apart for mains frequency suppression");  
   Serial.println(" S          - Stop stampling");  
   Serial.println(" RBnnn.n    - Set Run Begin wavelength in nm. Default 900"); 
   Serial.println(" REnnn.n    - Set Run End wavelength in nm. Default 300"); 
   Serial.println(" RSnnn.n    - Set Run step size in nm. Default 1"); 
-  Serial.println(" R          - Run once and reset"); 
+  Serial.println(" RR         - Run once and reset"); 
+  Serial.println("One output sample is the average of 10 samples taken 1 ms apart for mains frequency suppression");  
+
 }
 
 void gotoWavelength(int wavelength) {
   long currentPosition = move_steps(0,0);  
   move_steps( (( wavelength * STEPS_NM / 10) - currentPosition), NORM_stepTime );   
-  Serial.print("Arrived at: "); Serial.print(move_steps(0,0) / STEPS_NM); Serial.println(" nm"); 
+  //Serial.print("Arrived at: "); Serial.print(move_steps(0,0) / STEPS_NM); Serial.println(" nm"); 
 }
 
 void move_toHome() {
