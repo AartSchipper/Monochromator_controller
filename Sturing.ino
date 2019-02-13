@@ -1,13 +1,12 @@
 /*
  * Sturing voor stappenmotor op monochromator
  * Aart 02-2018
- * 
  */
 
 const int STEP = 3; // pin 
 const int DIR = 2;  // pin
 const float STEPS_NM = 96.2463; // steps per nm 
-const int MIN_stepTime = 390; // min. 400 us between steps
+const int MIN_stepTime = 390; // min. MIN_stepTime us between steps
 const int NORM_stepTime = 400; 
 
 const int HOME = 9; // switch pin 
@@ -21,7 +20,8 @@ const long maxPos = 900 * STEPS_NM;
 const int BYTES = 10; // Max command length
 
 const int UP = 1; // Direction
-#define SIGNAL A0 // pin
+const int SIGNAL = A0; // pin
+const int N_SAMPLES = 20; // Averaging over N_SAMPLES
 
 void setup() { 
   // initialize digital pin LED_BUILTIN as an output.
@@ -51,8 +51,7 @@ void loop() {
 
 void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start) {
   static int state = 0; 
-  static int localBeginWavelength, localEndWavelength, localStepWavelength, currentWavelength; 
-  long samples;  
+  static int localBeginWavelength = 3000, localEndWavelength = 4000, localStepWavelength = 100, currentWavelength; 
   
   if (beginWavelength > 0) localBeginWavelength = beginWavelength; 
   if (endWavelength > 0) localEndWavelength = endWavelength; 
@@ -61,34 +60,28 @@ void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start
   switch (state) {
     case 0: // wacht
       if (start) {
-        if (localStepWavelength > 0 && localBeginWavelength > 0 && localEndWavelength > 0 ) {
           Serial.print("Running from: "); Serial.print((float) localBeginWavelength / 10); 
           Serial.print ("nm to: "); Serial.print((float) localEndWavelength / 10); 
           Serial.print (" with stepsize: "); Serial.print((float) localStepWavelength / 10);
           Serial.println(" nm"); 
           state = 1;
-        } else {
-           Serial.print("Run error: Not all parameters are set");
-        }
       }
     break; 
     
     case 1: // ga naar begin
       gotoWavelength(localBeginWavelength); 
       currentWavelength = localBeginWavelength; 
+      Serial.println("Golflengte (nm), waarde"); 
       state = 2; 
     break; 
     
     case 2: // scan
       gotoWavelength(currentWavelength); 
-      for (int i = 0; i < 10; i++ ) {
-            samples += analogRead(SIGNAL);  
-          }
-      Serial.print(move_steps(0,0) / STEPS_NM); Serial.print(", "); Serial.println(samples / 10); 
-      samples = 0; 
+      printSample(); 
       currentWavelength += localStepWavelength; 
       if (currentWavelength > localEndWavelength) state = 3; 
     break; 
+    
     case 3: // reset
       gotoWavelength(localBeginWavelength); 
       currentWavelength = localBeginWavelength; 
@@ -97,20 +90,25 @@ void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start
   }
 }
 
+void printSample() {
+  int samples = 0; 
+  for (int i = 0; i < N_SAMPLES; i++ ) {
+            samples += analogRead(SIGNAL); 
+            delay(1);  
+          }
+      Serial.print(move_steps(0,0) / STEPS_NM); Serial.print(", "); Serial.println((float)samples / N_SAMPLES); 
+      samples = 0; 
+}
+
 void takeSamples(int setSampleTime) {
     static int sampleTime = 0; 
     static long lastTime; 
-    int samples; 
     if (setSampleTime > 0) sampleTime = setSampleTime; 
     if (setSampleTime < 0) sampleTime = 0; 
     if ( sampleTime > 0) {
        if (millis() - lastTime > sampleTime) {
           lastTime = millis();
-          for (int i = 0; i < 10; i++ ) {
-            samples += analogRead(SIGNAL);  
-          }
-          Serial.print(move_steps(0,0) / STEPS_NM); Serial.print(", "); Serial.println(samples / 10); 
-          samples = 0; 
+          printSample(); 
        }
     }
     return sampleTime; 
