@@ -5,11 +5,12 @@
 
 const int STEP = 3; // pin 
 const int DIR = 2;  // pin
+const int SLEEP = 4; // !SLEEP pin
 const float STEPS_NM = 96.2463; // steps per nm 
 const int MIN_stepTime = 390; // min. MIN_stepTime us between steps
 const int NORM_stepTime = 400; 
 
-const int HOME = 9; // switch pin 
+const int HOME = A1; // switch pin 
 const float HomePos = 255.6; // in nm
 const int homeStepTime = 500; // slow homing
 
@@ -21,7 +22,7 @@ const int BYTES = 10; // Max command length
 
 const int UP = 1; // Direction
 const int SIGNAL = A0; // pin
-const int N_SAMPLES = 20; // Averaging over N_SAMPLES
+const int N_SAMPLES = 100; // Averaging over N_SAMPLES
 
 void setup() { 
   // initialize digital pin LED_BUILTIN as an output.
@@ -29,9 +30,13 @@ void setup() {
   pinMode(DIR, OUTPUT);
   digitalWrite (DIR, !UP);
   pinMode (HOME, INPUT_PULLUP); 
+
+  pinMode(SLEEP, OUTPUT);
+  digitalWrite (SLEEP, HIGH); // enable motor
   
   pinMode(SIGNAL, INPUT);
-  analogReference(DEFAULT); 
+  analogReference(INTERNAL); 
+  
   Serial.begin(115200); 
   while (!Serial) { // wait for connection
     } 
@@ -91,7 +96,7 @@ void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start
 }
 
 void printSample() {
-  int samples = 0; 
+  long samples = 0; 
   for (int i = 0; i < N_SAMPLES; i++ ) {
             samples += analogRead(SIGNAL); 
             delay(1);  
