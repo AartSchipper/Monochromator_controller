@@ -3,29 +3,33 @@
  * Aart 02-2018
  */
 
-const int STEP = 3; // pin 
-const int DIR = 2;  // pin
+const int STEP = 3;  // pin 
+const int DIR = 2;   // pin
 const int SLEEP = 4; // !SLEEP pin
-const float STEPS_NM = 96.2463; // steps per nm 
-const int MIN_stepTime = 390; // min. MIN_stepTime us between steps
+const int UP = 1;             // Direction
+
+const float STEPS_NM = 96.2463; // steps nm 
+const int MIN_stepTime = 390;   // min. MIN_stepTime us between steps
 const int NORM_stepTime = 400; 
 
-const int HOME = A1; // switch pin 
-const float HomePos = 255.6; // in nm
+const int HOME = A1;          // switch pin, NC to gnd, 4k7 in series
+const int AUX1 = A2;          // unused, 4k7 in series
+const int AUX2 = A3;          // unused, 4k7 in series
+
+const float HomePos = 255.6;  // in nm
 const int homeStepTime = 500; // slow homing
 
 const long minPos = HomePos * STEPS_NM; 
-const long maxPos = 900 * STEPS_NM; 
+const long maxPos = 990 * STEPS_NM; 
 
 // Communication
-const int BYTES = 10; // Max command length
+const int BYTES = 10;         // Max command length
 
-const int UP = 1; // Direction
-const int SIGNAL = A0; // pin
-const int N_SAMPLES = 100; // Averaging over N_SAMPLES
+// sampling
+const int SIGNAL = A0;        // pin
+const int N_SAMPLES = 100;    // Averaging over N_SAMPLES
 
 void setup() { 
-  // initialize digital pin LED_BUILTIN as an output.
   pinMode(STEP, OUTPUT);
   pinMode(DIR, OUTPUT);
   digitalWrite (DIR, !UP);
@@ -35,15 +39,17 @@ void setup() {
   digitalWrite (SLEEP, HIGH); // enable motor
   
   pinMode(SIGNAL, INPUT);
-  analogReference(INTERNAL); 
+  analogReference(INTERNAL);  // 1.1 V on the 32U4
   
   Serial.begin(115200); 
-  while (!Serial) { // wait for connection
-    } 
-  Serial.println(__DATE__);   
+    while (!Serial) { // wait here for connection / opening of the serial monitor
+  } 
+    
+  Serial.print(__FILE__); Serial.print(" compiled on " ); Serial.println(__DATE__);   
+  Serial.println("Monochromator controller. Use carriage return. Type '?' for help"); 
   Serial.println("Moving to home... "); 
   move_toHome(); 
-  Serial.println("Monochromator controller. Use carriage return. Type '?' for help"); 
+  Serial.println("Ready");
   
 }
 
@@ -56,7 +62,7 @@ void loop() {
 
 void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start) {
   static int state = 0; 
-  static int localBeginWavelength = 3000, localEndWavelength = 4000, localStepWavelength = 100, currentWavelength; 
+  static int localBeginWavelength = 3000, localEndWavelength = 9000, localStepWavelength = 10, currentWavelength; 
   
   if (beginWavelength > 0) localBeginWavelength = beginWavelength; 
   if (endWavelength > 0) localEndWavelength = endWavelength; 
@@ -73,10 +79,10 @@ void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start
       }
     break; 
     
-    case 1: // ga naar begin
+    case 1: // Go to start
       gotoWavelength(localBeginWavelength); 
       currentWavelength = localBeginWavelength; 
-      Serial.println("Golflengte (nm), waarde"); 
+      Serial.println("Wavelength (nm), ADC"); 
       state = 2; 
     break; 
     
@@ -197,7 +203,7 @@ void processIncoming(char incomingBytes[]) { // commmand processing
     break; 
     
     default: 
-    Serial.println("Unknown command"); 
+    Serial.println("Unknown command. Please use carriage return only"); 
     
   }
   
@@ -229,11 +235,12 @@ void sendHelp() {
   Serial.println(" Wnnn.n     - Goto wavelength in nm. Example: W500.0 or W500. Range: 0-1000 nm");
   Serial.println(" Snnn       - Take samples every nnn ms on one wavelength");  
   Serial.println(" S          - Stop stampling");  
-  Serial.println(" RBnnn.n    - Set Run Begin wavelength in nm. Default 900"); 
-  Serial.println(" REnnn.n    - Set Run End wavelength in nm. Default 300"); 
+  Serial.println(" RBnnn.n    - Set Run Begin wavelength in nm. Default 300"); 
+  Serial.println(" REnnn.n    - Set Run End wavelength in nm. Default 900"); 
   Serial.println(" RSnnn.n    - Set Run step size in nm. Default 1"); 
   Serial.println(" RR         - Run once and reset"); 
-  Serial.println("One output sample is the average of 10 samples taken 1 ms apart for mains frequency suppression");  
+  Serial.println("One output sample is the average of ");
+  Serial.print (N_SAMPLES); Serial.println(" samples taken 1 ms apart for mains frequency suppression");  
 
 }
 
