@@ -1,18 +1,20 @@
 /*
- * Sturing voor stappenmotor op monochromator
+ * Control for an optical spectrometer consisting of a monochomator with a stepper motor and
+ * a photodiode with a preamp. 
  * Aart 02-2018
  */
 
-const int STEP = 3;  // pin 
-const int DIR = 2;   // pin
-const int SLEEP = 4; // !SLEEP pin
+// motor on DRV8825 breakout
+const int STEP = 3;           // pin 
+const int DIR = 2;            // pin
+const int SLEEP = 4;          // !SLEEP pin 
 const int UP = 1;             // Direction
 
 const float STEPS_NM = 96.2463; // steps nm 
 const int MIN_stepTime = 390;   // min. MIN_stepTime us between steps
-const int NORM_stepTime = 400; 
+const int NORM_stepTime = 400;  // normal speed
 
-const int HOME = A1;          // switch pin, NC to gnd, 4k7 in series
+const int HOME = A1;          // switch pin, NC to gnd, 4k7 in series. Max spec. current switch = 2 mA !
 const int AUX1 = A2;          // unused, 4k7 in series
 const int AUX2 = A3;          // unused, 4k7 in series
 
@@ -60,42 +62,42 @@ void loop() {
   doRun(0,0,0,0); 
 }
 
-void doRun(int beginWavelength, int endWavelength, int stepWavelength, int start) {
+void doRun(int beginWl, int endWl, int stepWl, int start) {
   static int state = 0; 
-  static int localBeginWavelength = 3000, localEndWavelength = 9000, localStepWavelength = 10, currentWavelength; 
+  static int localbeginWl = 3000, localendWl = 9000, localstepWl = 10, currentWl; 
   
-  if (beginWavelength > 0) localBeginWavelength = beginWavelength; 
-  if (endWavelength > 0) localEndWavelength = endWavelength; 
-  if (stepWavelength > 0) localStepWavelength = stepWavelength; 
+  if (beginWl > 0) localbeginWl = beginWl; 
+  if (endWl > 0) localendWl = endWl; 
+  if (stepWl > 0) localstepWl = stepWl; 
   
   switch (state) {
     case 0: // wacht
       if (start) {
-          Serial.print("Running from: "); Serial.print((float) localBeginWavelength / 10); 
-          Serial.print ("nm to: "); Serial.print((float) localEndWavelength / 10); 
-          Serial.print (" with stepsize: "); Serial.print((float) localStepWavelength / 10);
+          Serial.print("Running from: "); Serial.print((float) localbeginWl / 10); 
+          Serial.print ("nm to: "); Serial.print((float) localendWl / 10); 
+          Serial.print (" with stepsize: "); Serial.print((float) localstepWl / 10);
           Serial.println(" nm"); 
           state = 1;
       }
     break; 
     
     case 1: // Go to start
-      gotoWavelength(localBeginWavelength); 
-      currentWavelength = localBeginWavelength; 
+      gotoWavelength(localbeginWl); 
+      currentWl = localbeginWl; 
       Serial.println("Wavelength (nm), ADC"); 
       state = 2; 
     break; 
     
     case 2: // scan
-      gotoWavelength(currentWavelength); 
+      gotoWavelength(currentWl); 
       printSample(); 
-      currentWavelength += localStepWavelength; 
-      if (currentWavelength > localEndWavelength) state = 3; 
+      currentWl += localstepWl; 
+      if (currentWl > localendWl) state = 3; 
     break; 
     
     case 3: // reset
-      gotoWavelength(localBeginWavelength); 
-      currentWavelength = localBeginWavelength; 
+      gotoWavelength(localbeginWl); 
+      currentWl = localbeginWl; 
       state = 0; 
     break;  
   }
@@ -181,7 +183,7 @@ void processIncoming(char incomingBytes[]) { // commmand processing
        takeSamples(value); 
     break;
 
-    case 'R': // doRun(int beginWavelength, int endWavelength, int stepWavelength, int start)
+    case 'R': // doRun(int beginWl, int endWl, int stepWl, int start)
        value = getValue (incomingBytes, 2); 
       switch (incomingBytes[1]) { 
         case 'B':
