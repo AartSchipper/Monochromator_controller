@@ -71,7 +71,7 @@ void doRun(int beginWl, int endWl, int stepWl, int start) {
   if (stepWl > 0) localstepWl = stepWl; 
   
   switch (state) {
-    case 0: // wacht
+    case 0: // wait
       if (start) {
           Serial.print("Running from: "); Serial.print((float) localbeginWl / 10); 
           Serial.print ("nm to: "); Serial.print((float) localendWl / 10); 
@@ -124,7 +124,6 @@ void takeSamples(int setSampleTime) {
           printSample(); 
        }
     }
-    return sampleTime; 
 }
 
 void readSerial() { 
